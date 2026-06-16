@@ -75,7 +75,7 @@ export async function getEnrichments(
   // Build team-key → enrichment map from all ESPN events
   const espnLookup = new Map<
     string,
-    { score?: { home: number; away: number }; venue?: MatchEnrichment["venue"] }
+    { score?: { home: number; away: number }; clock?: string; venue?: MatchEnrichment["venue"] }
   >();
 
   for (const { events } of espnByDate) {
