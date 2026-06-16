@@ -62,7 +62,8 @@ export function MatchCard({
   const [isHovered, setIsHovered] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const PRIORITY = ["delta", "echo", "golf"];
+  const PRIORITY = ["echo", "delta", "golf"]; 
+
   const preferredSource =
     PRIORITY.map((p) => sources.find((s) => s.source.toLowerCase() === p)).find(Boolean) ??
     sources[0];
