@@ -1,65 +1,82 @@
-import Image from "next/image";
+import { getLiveMatches, getTodayMatches, filterFootball } from "@/lib/api";
+import { getEnrichments, getPastMatches } from "@/lib/sofascore";
+import { MatchCard } from "@/components/MatchCard";
+import { PastMatchCard } from "@/components/PastMatchCard";
+import { RefreshLive } from "@/components/RefreshLive";
+import { ScrollToNow } from "@/components/ScrollToNow";
 
-export default function Home() {
+export const revalidate = 30;
+
+export default async function HomePage() {
+  const [liveAll, todayAll, past] = await Promise.all([
+    getLiveMatches(),
+    getTodayMatches(),
+    getPastMatches(3),
+  ]);
+
+  const live = filterFootball(liveAll);
+  const today = filterFootball(todayAll);
+  const liveIds = new Set(live.map((m) => m.id));
+  const upcoming = today
+    .filter((m) => !liveIds.has(m.id))
+    .sort((a, b) => a.date - b.date);
+
+  const allMatches = [...live, ...upcoming];
+  const enrichments = await getEnrichments(allMatches);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-slate-900">
+      <RefreshLive />
+
+      <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-900/90 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-center gap-3">
+          {/* FIFA World Cup trophy icon */}
+          <svg className="w-6 h-6 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V17H7v2h10v-2h-4v-2.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" />
+          </svg>
+          <h1 className="text-base font-black tracking-widest text-white uppercase">
+            Welcome to <span className="text-amber-400">FIFA 26</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+          <svg className="w-6 h-6 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V17H7v2h10v-2h-4v-2.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" />
+          </svg>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-3">
+        {past.length === 0 && allMatches.length === 0 && (
+          <p className="text-slate-500 text-sm text-center py-20">No matches found.</p>
+        )}
+
+        {past.map((m) => (
+          <PastMatchCard key={m.id} match={m} />
+        ))}
+
+        {/* "Now" divider — sits between past and present/future */}
+        {past.length > 0 && allMatches.length > 0 && (
+          <>
+            <ScrollToNow />
+            <div id="now" className="flex items-center gap-3 py-2">
+              <div className="flex-1 h-px bg-gradient-to-r from-transparent to-slate-600" />
+              <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Now</span>
+              <div className="flex-1 h-px bg-gradient-to-l from-transparent to-slate-600" />
+            </div>
+          </>
+        )}
+
+        {allMatches.map((m) => (
+          <MatchCard
+            key={m.id}
+            match={m}
+            isLive={liveIds.has(m.id)}
+            enrichment={enrichments.get(m.id)}
+          />
+        ))}
       </main>
+
+      <footer className="border-t border-slate-800 mt-16 py-6 text-center">
+        <p className="text-slate-600 text-xs">Streams by streamed.pk · Scores by ESPN</p>
+      </footer>
     </div>
   );
 }
