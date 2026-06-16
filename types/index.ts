@@ -35,6 +35,7 @@ export interface Stream {
 
 export interface MatchEnrichment {
   score?: { home: number; away: number };
+  clock?: string;
   venue?: { stadium: string; city: string; country: string };
 }
 

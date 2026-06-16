@@ -19,7 +19,7 @@ interface ESPNCompetitor {
 interface ESPNEvent {
   id?: string;
   date?: string;
-  status?: { type?: { name?: string } };
+  status?: { type?: { name?: string; shortDetail?: string } };
   competitions?: Array<{
     competitors?: ESPNCompetitor[];
     venue?: { fullName?: string; address?: ESPNAddress };
@@ -90,6 +90,11 @@ export async function getEnrichments(
 
       const key = teamKey(home.team.displayName, away.team.displayName);
       const statusName = event.status?.type?.name ?? "";
+      const isActive =
+        statusName !== "" &&
+        statusName !== "STATUS_SCHEDULED" &&
+        statusName !== "STATUS_FULL_TIME" &&
+        statusName !== "STATUS_FINAL";
       const hasScore =
         statusName !== "STATUS_SCHEDULED" &&
         statusName !== "" &&
@@ -99,11 +104,13 @@ export async function getEnrichments(
       const venue = comp.venue;
       const city = venue?.address?.city;
       const region = venue?.address?.state ?? venue?.address?.country;
+      const shortDetail = event.status?.type?.shortDetail;
 
       espnLookup.set(key, {
         score: hasScore
           ? { home: parseInt(home.score!, 10), away: parseInt(away.score!, 10) }
           : undefined,
+        clock: isActive && shortDetail ? shortDetail : undefined,
         venue: venue?.fullName
           ? {
               stadium: venue.fullName,
@@ -126,6 +133,7 @@ export async function getEnrichments(
 
     enrichments.set(m.id, {
       score: espn.score,
+      clock: espn.clock,
       venue: espn.venue,
     });
   }

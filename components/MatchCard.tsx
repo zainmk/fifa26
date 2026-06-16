@@ -55,6 +55,7 @@ export function MatchCard({
 }) {
   const sources = usableSources(match.sources);
   const score = enrichment?.score;
+  const clock = enrichment?.clock;
   const venue = enrichment?.venue;
 
   const [showStreams, setShowStreams] = useState(false);
@@ -91,7 +92,9 @@ export function MatchCard({
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-60" />
         <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" style={{ boxShadow: "0 0 6px rgba(239,68,68,0.8)" }} />
       </span>
-      <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: "#ef4444", textShadow: "0 0 12px rgba(239,68,68,0.5)" }}>Live</span>
+      <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: "#ef4444", textShadow: "0 0 12px rgba(239,68,68,0.5)" }}>
+        Live{clock ? <span style={{ color: "rgba(255,255,255,0.55)", fontWeight: 600 }}> · {clock}</span> : null}
+      </span>
     </div>
   ) : (
     <span className="text-[11px] font-semibold" style={{ color: "rgba(52,211,153,0.8)" }}>{timeUntil(match.date)}</span>
