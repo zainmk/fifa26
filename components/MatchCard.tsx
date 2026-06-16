@@ -62,11 +62,12 @@ export function MatchCard({
   const [isHovered, setIsHovered] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const PRIORITY = ["echo", "delta", "golf"]; 
-
-  const preferredSource =
-    PRIORITY.map((p) => sources.find((s) => s.source.toLowerCase() === p)).find(Boolean) ??
-    sources[0];
+  function getPreferredSource() {
+    const priority = window.innerWidth < 768
+      ? ["echo", "delta", "golf"]
+      : ["delta", "echo", "golf"];
+    return priority.map((p) => sources.find((s) => s.source.toLowerCase() === p)).find(Boolean) ?? sources[0];
+  }
 
   function handleMouseEnter() {
     setIsHovered(true);
@@ -81,8 +82,9 @@ export function MatchCard({
 
   function handleCardClick(e: React.MouseEvent) {
     if ((e.target as HTMLElement).closest("a")) return;
-    if (preferredSource) {
-      window.open(embedUrl(preferredSource.source, preferredSource.id), "_blank", "noopener,noreferrer");
+    const preferred = getPreferredSource();
+    if (preferred) {
+      window.open(embedUrl(preferred.source, preferred.id), "_blank", "noopener,noreferrer");
     }
   }
 
