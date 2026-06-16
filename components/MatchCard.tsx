@@ -113,7 +113,7 @@ export function MatchCard({
       }}
     >
       <span
-        className="text-xl font-black tabular-nums"
+        className="text-xl font-black tabular-nums whitespace-nowrap"
         style={{
           fontFamily: "var(--font-sport)",
           color: "#ffffff",
@@ -239,7 +239,7 @@ export function MatchCard({
             <span className="text-sm font-bold truncate text-right uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.90)", fontFamily: "var(--font-sport)" }}>{match.teams?.home?.name ?? "Home"}</span>
             <TeamBadge badge={match.teams?.home?.badge} name={match.teams?.home?.name} />
           </div>
-          <div className="shrink-0 w-16 flex items-center justify-center">{scoreOrVs}</div>
+          <div className="shrink-0 flex items-center justify-center">{scoreOrVs}</div>
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
             <TeamBadge badge={match.teams?.away?.badge} name={match.teams?.away?.name} />
             <span className="text-sm font-bold truncate uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.90)", fontFamily: "var(--font-sport)" }}>{match.teams?.away?.name ?? "Away"}</span>
