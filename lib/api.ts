@@ -36,7 +36,10 @@ export function badgeUrl(badge: string): string {
 
 export function filterFootball(matches: Match[]): Match[] {
   return matches.filter(
-    (m) => m.category?.toLowerCase() === "football"
+    (m) =>
+      m.category?.toLowerCase() === "football" &&
+      m.teams?.home?.name &&
+      m.teams?.away?.name
   );
 }
 

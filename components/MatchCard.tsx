@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { Match, MatchEnrichment } from "@/types";
 import { badgeUrl, embedUrl, usableSources } from "@/lib/api";
 import { TeamFlag } from "@/components/TeamFlag";
@@ -54,26 +54,13 @@ export function MatchCard({
   const clock = enrichment?.clock;
   const venue = enrichment?.venue;
 
-  const [showStreams, setShowStreams] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function getPreferredSource() {
     const priority = window.innerWidth < 768
       ? ["echo", "delta", "golf"]
       : ["delta", "echo", "golf"];
     return priority.map((p) => sources.find((s) => s.source.toLowerCase() === p)).find(Boolean) ?? sources[0];
-  }
-
-  function handleMouseEnter() {
-    setIsHovered(true);
-    timerRef.current = setTimeout(() => setShowStreams(true), 500);
-  }
-
-  function handleMouseLeave() {
-    setIsHovered(false);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setShowStreams(false);
   }
 
   function handleCardClick(e: React.MouseEvent) {
@@ -164,8 +151,8 @@ export function MatchCard({
             ? "0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.10)"
             : "0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)"),
       }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       onClick={handleCardClick}
     >
 
@@ -203,8 +190,8 @@ export function MatchCard({
           </p>
         )}
 
-        {/* Row 4: stream picker — only shown when there are multiple streams */}
-        {sources.length > 1 && (
+        {/* Row 4: stream badges — always visible */}
+        {sources.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             {streamBadges}
           </div>
@@ -242,8 +229,8 @@ export function MatchCard({
           </div>
         </div>
 
-        {/* Right: stream badges (hover-reveal) */}
-        <div className={`flex flex-wrap gap-1.5 justify-end transition-opacity duration-200 ${showStreams ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        {/* Right: stream badges — always visible */}
+        <div className="flex flex-wrap gap-1.5 justify-end">
           {streamBadges}
         </div>
       </div>
