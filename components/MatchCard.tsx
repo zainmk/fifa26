@@ -6,6 +6,29 @@ import { badgeUrl, embedUrl, usableSources } from "@/lib/api";
 import { TeamFlag } from "@/components/TeamFlag";
 
 const SOURCE_PRIORITY = ["delta", "echo", "golf"];
+const STREAM_API = "https://streamed.pk/api/stream";
+
+async function findValidSource(sources: MatchSource[]): Promise<MatchSource | undefined> {
+  const pool = usableSources(sources);
+  const checks = await Promise.all(
+    pool.map(async (s) => {
+      try {
+        const res = await fetch(`${STREAM_API}/${s.source}/${s.id}`);
+        if (!res.ok) return { s, ok: false };
+        const data = await res.json();
+        return { s, ok: Array.isArray(data) && data.length > 0 };
+      } catch {
+        return { s, ok: false };
+      }
+    })
+  );
+  const valid = checks.filter((c) => c.ok).map((c) => c.s);
+  return (
+    SOURCE_PRIORITY.map((p) => valid.find((s) => s.source.toLowerCase() === p)).find(Boolean) ??
+    valid[0] ??
+    pool[0] // final fallback: open first usable source even if all checks failed
+  );
+}
 
 function TeamBadge({ badge, name, className = "w-10 h-10" }: { badge?: string; name?: string; className?: string }) {
   const [failed, setFailed] = useState(false);
@@ -46,37 +69,37 @@ export function MatchCard({
   match,
   isLive,
   enrichment,
-  validSources,
 }: {
   match: Match;
   isLive?: boolean;
   enrichment?: MatchEnrichment;
-  validSources?: MatchSource[];
 }) {
-  const sources = usableSources(match.sources); // all sources — always shown in badges
+  const sources = usableSources(match.sources);
   const score = enrichment?.score;
   const clock = enrichment?.clock;
   const venue = enrichment?.venue;
 
   const [isHovered, setIsHovered] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  function getPreferredSource() {
-    // Click opens first valid source in priority order; fall back to all usable sources
-    const pool = (validSources && validSources.length > 0) ? validSources : sources;
-    return SOURCE_PRIORITY
-      .map((p) => pool.find((s) => s.source.toLowerCase() === p))
-      .find(Boolean) ?? pool[0];
-  }
-
-  function handleCardClick(e: React.MouseEvent) {
+  async function handleCardClick(e: React.MouseEvent) {
     if ((e.target as HTMLElement).closest("a")) return;
-    const preferred = getPreferredSource();
-    if (preferred) {
-      window.open(embedUrl(preferred.source, preferred.id), "_blank", "noopener,noreferrer");
+    // Open blank tab synchronously — must happen before any await or popup blocker will kill it
+    const newTab = window.open("", "_blank");
+    if (!newTab) return;
+    setIsLoading(true);
+    try {
+      const preferred = await findValidSource(match.sources);
+      if (preferred) {
+        newTab.location.href = embedUrl(preferred.source, preferred.id);
+      } else {
+        newTab.close();
+      }
+    } finally {
+      setIsLoading(false);
     }
   }
 
-  // Shared sub-elements
   const liveIndicator = isLive ? (
     <div className="flex items-center gap-1.5">
       <span className="relative flex h-2 w-2">
@@ -140,7 +163,7 @@ export function MatchCard({
 
   return (
     <div
-      className="w-full cursor-pointer transition-all duration-200 rounded-2xl active:scale-[0.99] active:brightness-90"
+      className="w-full cursor-pointer transition-all duration-200 rounded-2xl active:scale-[0.99]"
       style={{
         background: isHovered
           ? "linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.06) 100%)"
@@ -155,6 +178,7 @@ export function MatchCard({
           : (isHovered
             ? "0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.10)"
             : "0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)"),
+        opacity: isLoading ? 0.6 : 1,
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -163,7 +187,6 @@ export function MatchCard({
 
       {/* ── MOBILE layout (hidden at md+) ── */}
       <div className="md:hidden flex flex-col gap-2.5 px-4 py-3">
-        {/* Row 1: status left, date/time right */}
         <div className="flex items-center justify-between">
           {liveIndicator}
           <div className="flex items-center gap-1.5">
@@ -172,7 +195,6 @@ export function MatchCard({
           </div>
         </div>
 
-        {/* Row 2: home | score | away */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
             <span className="text-sm font-bold truncate text-right uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.90)", fontFamily: "var(--font-sport)" }}>{match.teams?.home?.name ?? "Home"}</span>
@@ -185,7 +207,6 @@ export function MatchCard({
           </div>
         </div>
 
-        {/* Row 3: venue (compact inline) */}
         {venue && (
           <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.40)" }}>
             <span className="font-semibold" style={{ color: "rgba(255,255,255,0.60)" }}>
@@ -195,7 +216,6 @@ export function MatchCard({
           </p>
         )}
 
-        {/* Row 4: stream badges — always visible */}
         {sources.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             {streamBadges}
@@ -208,7 +228,6 @@ export function MatchCard({
         className="hidden md:grid items-center gap-6 px-5 py-4"
         style={{ gridTemplateColumns: "1fr 2fr 1fr" }}
       >
-        {/* Left: time + venue */}
         <div className="flex flex-col gap-0.5">
           <div className="mb-0.5">{liveIndicator}</div>
           <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.65)" }}>{formatDate(match.date)}</span>
@@ -221,7 +240,6 @@ export function MatchCard({
           )}
         </div>
 
-        {/* Center: teams + score */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-end">
             <span className="text-sm font-bold truncate text-right uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.90)", fontFamily: "var(--font-sport)" }}>{match.teams?.home?.name ?? "Home"}</span>
@@ -234,7 +252,6 @@ export function MatchCard({
           </div>
         </div>
 
-        {/* Right: stream badges — always visible */}
         <div className="flex flex-wrap gap-1.5 justify-end">
           {streamBadges}
         </div>
