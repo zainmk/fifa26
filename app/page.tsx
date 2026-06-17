@@ -17,8 +17,16 @@ export default async function HomePage() {
   const live = filterFootball(liveAll);
   const today = filterFootball(todayAll);
   const liveIds = new Set(live.map((m) => m.id));
+  // Also deduplicate by stream source keys — same match can appear in both APIs
+  // with different team name strings (e.g. "Congo DR" vs "DR Congo"), giving different IDs
+  const liveSourceKeys = new Set<string>(
+    live.flatMap((m) => m.sources.map((s) => `${s.source}:${s.id}`))
+  );
   const upcoming = today
-    .filter((m) => !liveIds.has(m.id))
+    .filter((m) =>
+      !liveIds.has(m.id) &&
+      !m.sources.some((s) => liveSourceKeys.has(`${s.source}:${s.id}`))
+    )
     .sort((a, b) => a.date - b.date);
 
   const allMatches = [...live, ...upcoming];
