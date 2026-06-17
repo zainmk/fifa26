@@ -44,6 +44,8 @@ export interface PastMatch {
   date: number;
   homeTeam: string;
   awayTeam: string;
+  homeBadge?: string;
+  awayBadge?: string;
   score: { home: number; away: number };
   venue?: { stadium: string; city: string; country: string };
 }

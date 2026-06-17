@@ -3,21 +3,17 @@
 import { useRef, useState } from "react";
 import type { Match, MatchEnrichment } from "@/types";
 import { badgeUrl, embedUrl, usableSources } from "@/lib/api";
+import { TeamFlag } from "@/components/TeamFlag";
 
 function TeamBadge({ badge, name, className = "w-10 h-10" }: { badge?: string; name?: string; className?: string }) {
-  if (!badge) {
-    return (
-      <div className={`${className} rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-400 shrink-0`}>
-        {name?.charAt(0) ?? "?"}
-      </div>
-    );
-  }
+  const [failed, setFailed] = useState(false);
+  if (!badge || failed) return <TeamFlag name={name} className={className} />;
   return (
     <img
       src={badgeUrl(badge)}
       alt={name ?? "Team"}
       className={`${className} object-contain shrink-0`}
-      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+      onError={() => setFailed(true)}
     />
   );
 }
@@ -237,11 +233,11 @@ export function MatchCard({
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-end">
             <span className="text-sm font-bold truncate text-right uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.90)", fontFamily: "var(--font-sport)" }}>{match.teams?.home?.name ?? "Home"}</span>
-            <TeamBadge badge={match.teams?.home?.badge} name={match.teams?.home?.name} />
+            <TeamBadge badge={match.teams?.home?.badge} name={match.teams?.home?.name} className="w-10 h-10" />
           </div>
           <div className="shrink-0 flex items-center justify-center">{scoreOrVs}</div>
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            <TeamBadge badge={match.teams?.away?.badge} name={match.teams?.away?.name} />
+            <TeamBadge badge={match.teams?.away?.badge} name={match.teams?.away?.name} className="w-10 h-10" />
             <span className="text-sm font-bold truncate uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.90)", fontFamily: "var(--font-sport)" }}>{match.teams?.away?.name ?? "Away"}</span>
           </div>
         </div>

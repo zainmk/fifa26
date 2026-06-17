@@ -13,7 +13,7 @@ interface ESPNAddress {
 interface ESPNCompetitor {
   homeAway: "home" | "away";
   score?: string;
-  team: { displayName: string };
+  team: { displayName: string; logo?: string };
 }
 
 interface ESPNEvent {
@@ -58,18 +58,19 @@ export async function getEnrichments(
   const enrichments = new Map<string, MatchEnrichment>();
   if (matches.length === 0) return enrichments;
 
-  // Group streamed.pk matches by ESPN date string
-  const dateGroups = new Map<string, Match[]>();
+  // Group streamed.pk matches by ESPN date string.
+  // Also include the previous UTC day per match — late US evening kickoffs
+  // (e.g. 9 PM ET = 1 AM UTC next day) are indexed by ESPN under the local date.
+  const uniqueDates = new Set<string>();
   for (const m of matches) {
     const ds = espnDateStr(m.date);
-    if (!dateGroups.has(ds)) dateGroups.set(ds, []);
-    dateGroups.get(ds)!.push(m);
+    uniqueDates.add(ds);
+    uniqueDates.add(espnDateStr(m.date - 86_400_000)); // also query day before in UTC
   }
 
   // Fetch ESPN data for each unique date in parallel
-  const dateEntries = Array.from(dateGroups.entries());
   const espnByDate = await Promise.all(
-    dateEntries.map(async ([ds]) => ({ ds, events: await fetchESPNEvents(ds) }))
+    Array.from(uniqueDates).map(async (ds) => ({ ds, events: await fetchESPNEvents(ds) }))
   );
 
   // Build team-key → enrichment map from all ESPN events
@@ -176,6 +177,8 @@ export async function getPastMatches(days = 1): Promise<PastMatch[]> {
         date: event.date ? new Date(event.date).getTime() : 0,
         homeTeam: home.team.displayName,
         awayTeam: away.team.displayName,
+        homeBadge: home.team.logo,
+        awayBadge: away.team.logo,
         score: { home: homeScore, away: awayScore },
         venue: venue?.fullName
           ? { stadium: venue.fullName, city: city ?? "", country: region ?? "" }

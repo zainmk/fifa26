@@ -1,4 +1,7 @@
+"use client";
+
 import type { PastMatch } from "@/types";
+import { TeamFlag } from "@/components/TeamFlag";
 
 function formatDate(ms: number): string {
   return new Date(ms).toLocaleDateString("en-US", {
@@ -69,9 +72,15 @@ export function PastMatchCard({ match }: { match: PastMatch }) {
 
         {/* Row 2: home | score | away */}
         <div className="flex items-center gap-2">
-          <span className="text-sm font-bold truncate flex-1 text-right uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.70)", fontFamily: "var(--font-sport)" }}>{homeTeam}</span>
+          <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
+            <span className="text-sm font-bold truncate text-right uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.70)", fontFamily: "var(--font-sport)" }}>{homeTeam}</span>
+            <TeamFlag name={homeTeam} className="w-9 h-6" />
+          </div>
           {scoreEl}
-          <span className="text-sm font-bold truncate flex-1 uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.70)", fontFamily: "var(--font-sport)" }}>{awayTeam}</span>
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <TeamFlag name={awayTeam} className="w-9 h-6" />
+            <span className="text-sm font-bold truncate uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.70)", fontFamily: "var(--font-sport)" }}>{awayTeam}</span>
+          </div>
         </div>
 
         {/* Row 3: venue (compact) */}
@@ -104,9 +113,15 @@ export function PastMatchCard({ match }: { match: PastMatch }) {
 
         {/* Center: teams + score */}
         <div className="flex items-center justify-center gap-3">
-          <span className="text-sm font-bold truncate text-right flex-1 uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.70)", fontFamily: "var(--font-sport)" }}>{homeTeam}</span>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-end">
+            <span className="text-sm font-bold truncate text-right uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.70)", fontFamily: "var(--font-sport)" }}>{homeTeam}</span>
+            <TeamFlag name={homeTeam} className="w-10 h-7" />
+          </div>
           {scoreEl}
-          <span className="text-sm font-bold truncate flex-1 uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.70)", fontFamily: "var(--font-sport)" }}>{awayTeam}</span>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <TeamFlag name={awayTeam} className="w-10 h-7" />
+            <span className="text-sm font-bold truncate uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.70)", fontFamily: "var(--font-sport)" }}>{awayTeam}</span>
+          </div>
         </div>
 
         {/* Right: FT badge */}
