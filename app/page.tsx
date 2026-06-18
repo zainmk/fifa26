@@ -37,6 +37,22 @@ export default async function HomePage() {
   // Next.js fetch cache means ESPN responses from liveEnrichments are reused here
   const enrichments = await getEnrichments(allMatches);
 
+  // Drop upcoming matches ESPN already considers finished — they now appear in past
+  const displayMatches = allMatches.filter(
+    (m) => !enrichments.get(m.id)?.isFinished || activeLive.some((l) => l.id === m.id)
+  );
+
+  // Use ESPN as the source of truth for live status — streamed.pk's feeds can lag
+  // in both directions (still "live" after FT, or not yet "live" during an active match)
+  const espnLiveIds = new Set(
+    displayMatches
+      .filter((m) => {
+        const e = enrichments.get(m.id);
+        return e?.score !== undefined && !e?.isFinished;
+      })
+      .map((m) => m.id)
+  );
+
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(160deg, #0d1a3a 0%, #090d1f 30%, #050508 60%, #080d0a 100%)" }}>
       <RefreshLive />
@@ -64,7 +80,7 @@ export default async function HomePage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-3">
-        {past.length === 0 && allMatches.length === 0 && (
+        {past.length === 0 && displayMatches.length === 0 && (
           <p className="text-slate-500 text-sm text-center py-20">No matches found.</p>
         )}
 
@@ -73,7 +89,7 @@ export default async function HomePage() {
         ))}
 
         {/* "Now" divider — sits between past and present/future */}
-        {past.length > 0 && allMatches.length > 0 && (
+        {past.length > 0 && displayMatches.length > 0 && (
           <>
             <ScrollToNow />
             <div id="now" className="flex items-center gap-4 py-3" style={{ scrollMarginTop: "72px" }}>
@@ -90,11 +106,11 @@ export default async function HomePage() {
           </>
         )}
 
-        {allMatches.map((m) => (
+        {displayMatches.map((m) => (
           <MatchCard
             key={m.id}
             match={m}
-            isLive={liveIds.has(m.id)}
+            isLive={espnLiveIds.has(m.id)}
             enrichment={enrichments.get(m.id)}
           />
         ))}

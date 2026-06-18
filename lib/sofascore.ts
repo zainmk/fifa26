@@ -146,8 +146,9 @@ export async function getEnrichments(
 }
 
 export async function getPastMatches(days = 1): Promise<PastMatch[]> {
-  const dateStrings = Array.from({ length: days }, (_, i) => {
-    const d = new Date(Date.now() - (i + 1) * 86_400_000);
+  // i=0 is today — catches matches that finished earlier in the day
+  const dateStrings = Array.from({ length: days + 1 }, (_, i) => {
+    const d = new Date(Date.now() - i * 86_400_000);
     return d.toISOString().split("T")[0].replace(/-/g, "");
   });
 
