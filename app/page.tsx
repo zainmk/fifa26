@@ -37,10 +37,14 @@ export default async function HomePage() {
   // Next.js fetch cache means ESPN responses from liveEnrichments are reused here
   const enrichments = await getEnrichments(allMatches);
 
-  // Drop upcoming matches ESPN already considers finished — they now appear in past
-  const displayMatches = allMatches.filter(
-    (m) => !enrichments.get(m.id)?.isFinished || activeLive.some((l) => l.id === m.id)
-  );
+  // Only show matches ESPN's fifa.world endpoint recognises — filters out non-World-Cup football.
+  // Also drop finished matches (they appear in past) unless streamed.pk still has them as live.
+  const displayMatches = allMatches.filter((m) => {
+    const e = enrichments.get(m.id);
+    if (!e) return false; // not a FIFA World Cup match
+    if (e.isFinished && !activeLive.some((l) => l.id === m.id)) return false;
+    return true;
+  });
 
   // Use ESPN as the source of truth for live status — streamed.pk's feeds can lag
   // in both directions (still "live" after FT, or not yet "live" during an active match)

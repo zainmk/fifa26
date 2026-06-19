@@ -28,7 +28,12 @@ interface ESPNEvent {
 }
 
 function normalize(name: string): string {
-  return resolveAlias(name.toLowerCase().replace(/[^a-z0-9]/g, ""));
+  return resolveAlias(
+    name.toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '') // strip combining diacritics (é->e, í->i, etc.)
+      .replace(/[^a-z0-9]/g, '')
+  );
 }
 
 function teamKey(home: string, away: string): string {
