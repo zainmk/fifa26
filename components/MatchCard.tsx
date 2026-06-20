@@ -1,34 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Match, MatchEnrichment, MatchSource } from "@/types";
 import { badgeUrl, embedUrl, usableSources } from "@/lib/api";
 import { TeamFlag } from "@/components/TeamFlag";
-
-const SOURCE_PRIORITY = ["delta", "echo", "golf"];
-const STREAM_API = "https://streamed.pk/api/stream";
-
-async function findValidSource(sources: MatchSource[]): Promise<MatchSource | undefined> {
-  const pool = usableSources(sources);
-  const checks = await Promise.all(
-    pool.map(async (s) => {
-      try {
-        const res = await fetch(`${STREAM_API}/${s.source}/${s.id}`);
-        if (!res.ok) return { s, ok: false };
-        const data = await res.json();
-        return { s, ok: Array.isArray(data) && data.length > 0 };
-      } catch {
-        return { s, ok: false };
-      }
-    })
-  );
-  const valid = checks.filter((c) => c.ok).map((c) => c.s);
-  return (
-    SOURCE_PRIORITY.map((p) => valid.find((s) => s.source.toLowerCase() === p)).find(Boolean) ??
-    valid[0] ??
-    pool[0] // final fallback: open first usable source even if all checks failed
-  );
-}
 
 function TeamBadge({ badge, name, className = "w-10 h-10" }: { badge?: string; name?: string; className?: string }) {
   const [failed, setFailed] = useState(false);
@@ -80,24 +55,42 @@ export function MatchCard({
   const venue = enrichment?.venue;
 
   const [isHovered, setIsHovered] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  // Pre-computed best source by total viewer count across streams. Falls back to sources[0].
+  const [bestSource, setBestSource] = useState<MatchSource | null>(null);
 
-  async function handleCardClick(e: React.MouseEvent) {
+  useEffect(() => {
+    if (sources.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      sources.map(async (s) => {
+        try {
+          const res = await fetch(`https://streamed.pk/api/stream/${s.source}/${s.id}`);
+          if (!res.ok) return { s, viewers: 0 };
+          const data = await res.json();
+          if (!Array.isArray(data)) return { s, viewers: 0 };
+          const totalViewers = data.reduce(
+            (sum: number, item: { viewers?: number }) => sum + (item.viewers ?? 0),
+            0
+          );
+          return { s, viewers: totalViewers };
+        } catch {
+          return { s, viewers: 0 };
+        }
+      })
+    ).then((results) => {
+      if (cancelled) return;
+      const best = results.reduce((a, b) => (b.viewers > a.viewers ? b : a), results[0]);
+      setBestSource(best.s);
+    });
+    return () => { cancelled = true; };
+  }, [match.id]);
+
+  function handleCardClick(e: React.MouseEvent) {
+    // Badge <a> clicks open their own link — don't intercept
     if ((e.target as HTMLElement).closest("a")) return;
-    // Open blank tab synchronously — must happen before any await or popup blocker will kill it
-    const newTab = window.open("", "_blank");
-    if (!newTab) return;
-    setIsLoading(true);
-    try {
-      const preferred = await findValidSource(match.sources);
-      if (preferred) {
-        newTab.location.href = embedUrl(preferred.source, preferred.id);
-      } else {
-        newTab.close();
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    const target = bestSource ?? sources[0];
+    if (!target) return;
+    window.open(embedUrl(target.source, target.id), "_blank", "noopener,noreferrer");
   }
 
   const liveIndicator = isLive ? (
@@ -141,7 +134,7 @@ export function MatchCard({
 
   const streamBadges = sources.map((s) => (
     <a
-      key={`${s.source}-${s.id}`}
+      key={`${s.source}:${s.id}`}
       href={embedUrl(s.source, s.id)}
       target="_blank"
       rel="noopener noreferrer"
@@ -163,7 +156,7 @@ export function MatchCard({
 
   return (
     <div
-      className="w-full cursor-pointer transition-all duration-200 rounded-2xl active:scale-[0.99]"
+      className="w-full transition-all duration-200 rounded-2xl cursor-pointer active:scale-[0.99]"
       style={{
         background: isHovered
           ? "linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.06) 100%)"
@@ -178,11 +171,10 @@ export function MatchCard({
           : (isHovered
             ? "0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.10)"
             : "0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)"),
-        opacity: isLoading ? 0.6 : 1,
       }}
+      onClick={handleCardClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={handleCardClick}
     >
 
       {/* ── MOBILE layout (hidden at md+) ── */}
