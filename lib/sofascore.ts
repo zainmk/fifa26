@@ -62,6 +62,16 @@ function isFinishedStatus(statusName: string): boolean {
   return statusName === "STATUS_FULL_TIME" || statusName === "STATUS_FINAL";
 }
 
+// Parse ESPN displayClock into total elapsed minutes. "90'+7'" → 97, "120'+5'" → 125, "90:00" → 90.
+function parseMatchMinutes(displayClock?: string): number {
+  if (!displayClock) return 95;
+  const overtime = displayClock.match(/^(\d+)'\+(\d+)'/);
+  if (overtime) return parseInt(overtime[1]) + parseInt(overtime[2]);
+  const colon = displayClock.match(/^(\d+):/);
+  if (colon) return parseInt(colon[1]);
+  return 95;
+}
+
 export async function getEnrichments(
   matches: Match[]
 ): Promise<Map<string, MatchEnrichment>> {
@@ -86,7 +96,7 @@ export async function getEnrichments(
   // Build team-key → enrichment map from all ESPN events
   const espnLookup = new Map<
     string,
-    { score?: { home: number; away: number }; clock?: string; venue?: MatchEnrichment["venue"]; isFinished: boolean }
+    { score?: { home: number; away: number }; clock?: string; venue?: MatchEnrichment["venue"]; isFinished: boolean; hideAfterMs?: number }
   >();
 
   for (const { events } of espnByDate) {
@@ -117,6 +127,14 @@ export async function getEnrichments(
       const region = venue?.address?.state ?? venue?.address?.country;
       const shortDetail = event.status?.type?.shortDetail;
 
+      // For finished matches: compute end time from kickoff + parsed displayClock, then add 10 min grace.
+      let hideAfterMs: number | undefined;
+      if (finished && event.date) {
+        const kickoffMs = new Date(event.date).getTime();
+        const elapsedMs = parseMatchMinutes(event.status?.displayClock) * 60_000;
+        hideAfterMs = kickoffMs + elapsedMs + 10 * 60_000;
+      }
+
       espnLookup.set(key, {
         score: hasScore
           ? { home: parseInt(home.score!, 10), away: parseInt(away.score!, 10) }
@@ -126,6 +144,7 @@ export async function getEnrichments(
           ? { stadium: venue.fullName, city: city ?? "", country: region ?? "" }
           : undefined,
         isFinished: finished,
+        hideAfterMs,
       });
     }
   }
@@ -144,6 +163,7 @@ export async function getEnrichments(
       clock: espn.clock,
       venue: espn.venue,
       isFinished: espn.isFinished,
+      hideAfterMs: espn.hideAfterMs,
     });
   }
 

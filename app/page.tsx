@@ -37,22 +37,32 @@ export default async function HomePage() {
   // Next.js fetch cache means ESPN responses from liveEnrichments are reused here
   const enrichments = await getEnrichments(allMatches);
 
+  const now = Date.now();
+
   // Only show matches ESPN's fifa.world endpoint recognises — filters out non-World-Cup football.
-  // Also drop finished matches (they appear in past) unless streamed.pk still has them as live.
+  // Finished matches stay visible until 10 minutes after their computed end time (grace period),
+  // or while streamed.pk still carries them as live (lag handling).
   const displayMatches = allMatches.filter((m) => {
     const e = enrichments.get(m.id);
     if (!e) return false; // not a FIFA World Cup match
-    if (e.isFinished && !activeLive.some((l) => l.id === m.id)) return false;
+    if (e.isFinished) {
+      const inGrace = e.hideAfterMs !== undefined && now < e.hideAfterMs;
+      const stillLive = activeLive.some((l) => l.id === m.id);
+      if (!inGrace && !stillLive) return false;
+    }
     return true;
   });
 
   // Use ESPN as the source of truth for live status — streamed.pk's feeds can lag
-  // in both directions (still "live" after FT, or not yet "live" during an active match)
+  // in both directions (still "live" after FT, or not yet "live" during an active match).
+  // Grace-period matches (finished but within 10 min of end) keep the LIVE badge.
   const espnLiveIds = new Set(
     displayMatches
       .filter((m) => {
         const e = enrichments.get(m.id);
-        return e?.score !== undefined && !e?.isFinished;
+        if (e?.score === undefined) return false; // no score = not yet kicked off
+        if (!e.isFinished) return true; // actively live
+        return e.hideAfterMs !== undefined && now < e.hideAfterMs; // grace period
       })
       .map((m) => m.id)
   );

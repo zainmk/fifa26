@@ -38,6 +38,8 @@ export interface MatchEnrichment {
   clock?: string;
   venue?: { stadium: string; city: string; country: string };
   isFinished?: boolean;
+  // epoch ms after which this finished match should leave the active section (end time + 10 min grace)
+  hideAfterMs?: number;
 }
 
 export interface PastMatch {
