@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Match, MatchEnrichment, MatchSource } from "@/types";
 import { badgeUrl, embedUrl, usableSources } from "@/lib/api";
 import { TeamFlag } from "@/components/TeamFlag";
@@ -55,6 +55,20 @@ export function MatchCard({
   const venue = enrichment?.venue;
 
   const [isHovered, setIsHovered] = useState(false);
+  const [isHighlighted, setIsHighlighted] = useState(false);
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    function onHighlight(e: Event) {
+      if ((e as CustomEvent).detail?.matchId !== match.id) return;
+      setIsHighlighted(true);
+      if (highlightTimer.current) clearTimeout(highlightTimer.current);
+      highlightTimer.current = setTimeout(() => setIsHighlighted(false), 2500);
+    }
+    window.addEventListener("highlightMatch", onHighlight);
+    return () => window.removeEventListener("highlightMatch", onHighlight);
+  }, [match.id]);
+
   // Pre-computed best source by total viewer count across streams. Falls back to sources[0].
   const [bestSource, setBestSource] = useState<MatchSource | null>(null);
 
@@ -86,9 +100,11 @@ export function MatchCard({
   }, [match.id]);
 
   function handleCardClick(e: React.MouseEvent) {
-    // Badge <a> clicks open their own link — don't intercept
     if ((e.target as HTMLElement).closest("a")) return;
-    const target = bestSource ?? sources[0];
+    const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
+    const target = isTouchDevice
+      ? (sources.find((s) => s.source === "echo") ?? sources[0])
+      : (bestSource ?? sources[0]);
     if (!target) return;
     window.open(embedUrl(target.source, target.id), "_blank", "noopener,noreferrer");
   }
@@ -158,22 +174,26 @@ export function MatchCard({
     <div
       className="w-full transition-all duration-200 rounded-2xl cursor-pointer active:scale-[0.99]"
       style={{
-        background: isHovered
+        background: (isHovered || isHighlighted)
           ? "linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.06) 100%)"
           : "linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)",
         border: isLive
-          ? (isHovered ? "1px solid rgba(239,68,68,0.45)" : "1px solid rgba(239,68,68,0.25)")
-          : (isHovered ? "1px solid rgba(255,255,255,0.16)" : "1px solid rgba(255,255,255,0.08)"),
+          ? ((isHovered || isHighlighted) ? "1px solid rgba(239,68,68,0.45)" : "1px solid rgba(239,68,68,0.25)")
+          : ((isHovered || isHighlighted) ? "1px solid rgba(255,255,255,0.16)" : "1px solid rgba(255,255,255,0.08)"),
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
         boxShadow: isLive
           ? "0 4px 32px rgba(239,68,68,0.12), 0 2px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)"
-          : (isHovered
+          : ((isHovered || isHighlighted)
             ? "0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.10)"
             : "0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)"),
       }}
       onClick={handleCardClick}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        setIsHighlighted(false);
+        if (highlightTimer.current) clearTimeout(highlightTimer.current);
+      }}
       onMouseLeave={() => setIsHovered(false)}
     >
 

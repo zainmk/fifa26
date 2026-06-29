@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PastMatch } from "@/types";
 import { TeamFlag } from "@/components/TeamFlag";
 
@@ -55,6 +55,25 @@ function MatchTimeBadge({ matchTime }: { matchTime?: string }) {
 export function PastMatchCard({ match }: { match: PastMatch }) {
   const { homeTeam, awayTeam, homeBadge, awayBadge, score, venue, date, matchTime } = match;
 
+  const [isHighlighted, setIsHighlighted] = useState(false);
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    function onHighlight(e: Event) {
+      if ((e as CustomEvent).detail?.matchId !== match.id) return;
+      setIsHighlighted(true);
+      if (highlightTimer.current) clearTimeout(highlightTimer.current);
+      highlightTimer.current = setTimeout(() => setIsHighlighted(false), 2500);
+    }
+    window.addEventListener("highlightMatch", onHighlight);
+    return () => window.removeEventListener("highlightMatch", onHighlight);
+  }, [match.id]);
+
+  function clearHighlight() {
+    setIsHighlighted(false);
+    if (highlightTimer.current) clearTimeout(highlightTimer.current);
+  }
+
   const scoreEl = (
     <div
       className="flex items-center justify-center px-3 py-1 rounded-lg shrink-0"
@@ -74,15 +93,24 @@ export function PastMatchCard({ match }: { match: PastMatch }) {
   );
 
   const cardStyle = {
-    background: "linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)",
-    border: "1px solid rgba(255,255,255,0.06)",
+    background: isHighlighted
+      ? "linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.06) 100%)"
+      : "linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)",
+    border: isHighlighted ? "1px solid rgba(255,255,255,0.16)" : "1px solid rgba(255,255,255,0.06)",
     backdropFilter: "blur(12px)",
     WebkitBackdropFilter: "blur(12px)",
-    opacity: 0.65,
+    opacity: isHighlighted ? 1 : 0.65,
+    transition: "opacity 0.2s, background 0.2s, border-color 0.2s",
   };
 
   return (
-    <div className="w-full rounded-2xl" style={cardStyle}>
+    <div
+      className="w-full rounded-2xl"
+      style={cardStyle}
+      onMouseEnter={clearHighlight}
+      onMouseLeave={clearHighlight}
+      onTouchStart={clearHighlight}
+    >
 
       {/* ── MOBILE layout (hidden at md+) ── */}
       <div className="md:hidden flex flex-col gap-2 px-4 py-3">

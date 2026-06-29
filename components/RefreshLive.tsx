@@ -11,6 +11,7 @@ export function RefreshLive() {
   }, [router]);
 
   useEffect(() => {
+    refresh();
     const timer = setInterval(refresh, 30_000);
     return () => clearInterval(timer);
   }, [refresh]);

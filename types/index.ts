@@ -24,14 +24,6 @@ export interface Match {
   sources: MatchSource[];
 }
 
-export interface Stream {
-  id: string;
-  streamNo: number;
-  language: string;
-  hd: boolean;
-  embedUrl: string;
-  source: string;
-}
 
 export interface MatchEnrichment {
   score?: { home: number; away: number };

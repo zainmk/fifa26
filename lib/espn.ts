@@ -36,7 +36,7 @@ function normalize(name: string): string {
   );
 }
 
-function teamKey(home: string, away: string): string {
+export function teamKey(home: string, away: string): string {
   return `${normalize(home)}_${normalize(away)}`;
 }
 

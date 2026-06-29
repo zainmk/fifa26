@@ -1,17 +1,20 @@
 import { getLiveMatches, getTodayMatches, filterFootball } from "@/lib/api";
-import { getEnrichments, getPastMatches } from "@/lib/sofascore";
+import { getEnrichments, getPastMatches, teamKey } from "@/lib/espn";
 import { MatchCard } from "@/components/MatchCard";
 import { PastMatchCard } from "@/components/PastMatchCard";
 import { RefreshLive } from "@/components/RefreshLive";
 import { ScrollToNow } from "@/components/ScrollToNow";
+import { AppHeader } from "@/components/AppHeader";
+import { getBracketData } from "@/lib/bracket";
 
 export const revalidate = 30;
 
 export default async function HomePage() {
-  const [liveAll, todayAll, past] = await Promise.all([
+  const [liveAll, todayAll, past, bracketData] = await Promise.all([
     getLiveMatches(),
     getTodayMatches(),
     getPastMatches(3),
+    getBracketData(),
   ]);
 
   const live = filterFootball(liveAll);
@@ -56,6 +59,18 @@ export default async function HomePage() {
   // Use ESPN as the source of truth for live status — streamed.pk's feeds can lag
   // in both directions (still "live" after FT, or not yet "live" during an active match).
   // Grace-period matches (finished but within 10 min of end) keep the LIVE badge.
+  // Map normalized team key → match ID so the bracket can scroll to the right card.
+  // Covers both past (ESPN IDs) and live/upcoming (streamed.pk IDs).
+  const matchKeyToId: Record<string, string> = {};
+  for (const m of past) {
+    matchKeyToId[teamKey(m.homeTeam, m.awayTeam)] = m.id;
+  }
+  for (const m of displayMatches) {
+    const home = m.teams?.home?.name;
+    const away = m.teams?.away?.name;
+    if (home && away) matchKeyToId[teamKey(home, away)] = m.id;
+  }
+
   const espnLiveIds = new Set(
     displayMatches
       .filter((m) => {
@@ -83,15 +98,7 @@ export default async function HomePage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[600px] rounded-full opacity-10" style={{ background: "radial-gradient(ellipse, #1d4ed8 0%, transparent 70%)" }} />
       </div>
 
-      <header className="sticky top-0 z-20 border-b border-white/5 backdrop-blur-xl" style={{ background: "rgba(5,5,8,0.75)" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-center gap-3">
-          {/* Logo placeholder — swap src once fifa26-logo.png is in /public */}
-          <img src="/fifa26-logo.png" alt="FIFA 26" className="h-9 w-auto drop-shadow-[0_0_12px_rgba(251,191,36,0.5)]" />
-          <h1 className="text-base font-black tracking-widest text-white uppercase drop-shadow-[0_0_20px_rgba(251,191,36,0.3)]">
-            <span className="text-amber-400">FIFA26</span>
-          </h1>
-        </div>
-      </header>
+      <AppHeader bracketData={bracketData} matchKeyToId={matchKeyToId} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-3">
         {past.length === 0 && displayMatches.length === 0 && (
@@ -99,7 +106,9 @@ export default async function HomePage() {
         )}
 
         {past.map((m) => (
-          <PastMatchCard key={m.id} match={m} />
+          <div key={m.id} id={`match-${m.id}`} style={{ scrollMarginTop: "96px" }}>
+            <PastMatchCard match={m} />
+          </div>
         ))}
 
         {/* "Now" divider — sits between past and present/future */}
@@ -121,12 +130,13 @@ export default async function HomePage() {
         )}
 
         {displayMatches.map((m) => (
-          <MatchCard
-            key={m.id}
-            match={m}
-            isLive={espnLiveIds.has(m.id)}
-            enrichment={enrichments.get(m.id)}
-          />
+          <div key={m.id} id={`match-${m.id}`} style={{ scrollMarginTop: "96px" }}>
+            <MatchCard
+              match={m}
+              isLive={espnLiveIds.has(m.id)}
+              enrichment={enrichments.get(m.id)}
+            />
+          </div>
         ))}
       </main>
 
