@@ -75,34 +75,22 @@ export function MatchCard({
   useEffect(() => {
     if (sources.length === 0) return;
     let cancelled = false;
-    Promise.all(
-      sources.map(async (s) => {
-        try {
-          const res = await fetch(`https://streamed.pk/api/stream/${s.source}/${s.id}`);
-          if (!res.ok) return { s, viewers: 0 };
-          const data = await res.json();
-          if (!Array.isArray(data)) return { s, viewers: 0 };
-          const totalViewers = data.reduce(
-            (sum: number, item: { viewers?: number }) => sum + (item.viewers ?? 0),
-            0
-          );
-          return { s, viewers: totalViewers };
-        } catch {
-          return { s, viewers: 0 };
-        }
+    const query = sources.map((s) => `${s.source}:${s.id}`).join(",");
+    fetch(`/api/viewers?sources=${encodeURIComponent(query)}`)
+      .then((r) => r.json())
+      .then((best) => {
+        if (cancelled || !best) return;
+        const matched = sources.find((s) => s.source === best.source && s.id === best.id);
+        if (matched) setBestSource(matched);
       })
-    ).then((results) => {
-      if (cancelled) return;
-      const best = results.reduce((a, b) => (b.viewers > a.viewers ? b : a), results[0]);
-      setBestSource(best.s);
-    });
+      .catch(() => {});
     return () => { cancelled = true; };
   }, [match.id]);
 
   function handleCardClick(e: React.MouseEvent) {
     if ((e.target as HTMLElement).closest("a")) return;
-    const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
-    const target = isTouchDevice
+    const isMobile = window.innerWidth < 768;
+    const target = isMobile
       ? (sources.find((s) => s.source === "echo") ?? sources[0])
       : (bestSource ?? sources[0]);
     if (!target) return;
