@@ -18,6 +18,8 @@ export interface BracketMatch {
   date: string;
   status: MatchStatus;
   round: string;
+  /** True only for R32 matches whose R16 slot is confirmed via team-name cross-reference. */
+  confirmed?: boolean;
 }
 
 export interface BracketRound {
@@ -50,6 +52,35 @@ async function fetchRange(dateRange: string): Promise<unknown[]> {
     return [];
   }
 }
+
+// R32 display order derived from ESPN bracket slot assignments and Wikipedia 2026 WC bracket structure.
+// Each consecutive pair (2i, 2i+1) feeds the same R16 match:
+//   positions 0-1  → R16 #0 (Houston):       slots 1+3  = RSA/CAN + NED/MAR
+//   positions 2-3  → R16 #1 (Philadelphia):  slots 2+5  = GER/PAR + FRA/SWE
+//   positions 4-5  → R16 #2 (E. Rutherford): slots 4+6  = BRA/JPN + CIV/NOR
+//   positions 6-7  → R16 #3 (Mexico City):   slots 7+8  = MEX/ECU + ENG/COD
+//   positions 8-9  → R16 #4 (Arlington):     slots 11+12 = AUS/EGY + ARG/CPV
+//   positions 10-11→ R16 #5 (Seattle):       slots 9+10  = USA/BIH + BEL/SEN
+//   positions 12-13→ R16 #6 (Atlanta):       slots 14+16 = POR/CRO + ESP/AUT
+//   positions 14-15→ R16 #7 (Vancouver):     slots 13+15 = SUI/ALG + COL/GHA
+const R32_DISPLAY_ORDER: Record<string, number> = {
+  "760486": 0,   // RSA vs CAN
+  "760488": 1,   // NED vs MAR
+  "760489": 2,   // GER vs PAR
+  "760492": 3,   // FRA vs SWE
+  "760487": 4,   // BRA vs JPN
+  "760490": 5,   // CIV vs NOR
+  "760491": 6,   // MEX vs ECU
+  "760495": 7,   // ENG vs COD
+  "760499": 8,   // AUS vs EGY
+  "760500": 9,   // ARG vs CPV
+  "760494": 10,  // USA vs BIH
+  "760493": 11,  // BEL vs SEN
+  "760496": 12,  // POR vs CRO
+  "760497": 13,  // ESP vs AUT
+  "760498": 14,  // SUI vs ALG
+  "760501": 15,  // COL vs GHA
+};
 
 export async function getBracketData(): Promise<BracketData> {
   // Fetch all knockout rounds in three parallel date-range queries
@@ -138,9 +169,36 @@ export async function getBracketData(): Promise<BracketData> {
     }
   }
 
-  // Sort matches within each round by date (preserves bracket slot ordering)
+  // Sort matches within each round by date (initial ordering)
   for (const matches of roundMap.values()) {
     matches.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }
+
+  // Re-order R32 matches into hardcoded bracket display positions.
+  // Each consecutive pair (2i, 2i+1) feeds the same R16 match, so connector lines are correct.
+  const r32Matches = roundMap.get("round-of-32");
+
+  if (r32Matches && r32Matches.length > 0) {
+    const sorted: Array<BracketMatch | null> = new Array(16).fill(null);
+    const unassigned: BracketMatch[] = [];
+
+    for (const match of r32Matches) {
+      const idx = R32_DISPLAY_ORDER[match.id];
+      if (idx !== undefined && sorted[idx] === null) {
+        match.confirmed = true;
+        sorted[idx] = match;
+      } else {
+        unassigned.push(match);
+      }
+    }
+
+    // Any unrecognized event IDs fill remaining slots in date order
+    let ui = 0;
+    for (let i = 0; i < sorted.length; i++) {
+      if (sorted[i] === null && ui < unassigned.length) sorted[i] = unassigned[ui++];
+    }
+
+    roundMap.set("round-of-32", sorted.filter((m): m is BracketMatch => m !== null));
   }
 
   const rounds: BracketRound[] = ROUND_ORDER.filter((slug) => roundMap.has(slug)).map(

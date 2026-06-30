@@ -44,5 +44,5 @@ export function filterFootball(matches: Match[]): Match[] {
 }
 
 export function usableSources(sources: MatchSource[]): MatchSource[] {
-  return sources.filter((s) => s.source !== "admin");
+  return sources;
 }

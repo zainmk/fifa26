@@ -151,25 +151,45 @@ function ConnectorColumn({
   fromRoundIdx,
   toMatchCount,
   totalH,
+  fromMatches,
 }: {
   fromRoundIdx: number;
   toMatchCount: number;
   totalH: number;
+  // When provided, connectors are only drawn for pairs where .confirmed is true.
+  // Omit for rounds where all pairings are known (R16→QF and beyond).
+  fromMatches?: BracketMatch[];
 }) {
   const lineColor = "rgba(255,255,255,0.11)";
 
   return (
     <div style={{ width: CONN_W, height: totalH, position: "relative", flexShrink: 0 }}>
       {Array.from({ length: toMatchCount }, (_, i) => {
+        const topConf = fromMatches ? (fromMatches[2 * i]?.confirmed ?? false) : true;
+        const botConf = fromMatches ? (fromMatches[2 * i + 1]?.confirmed ?? false) : true;
+
+        // No connector at all if neither R32 match's slot is confirmed
+        if (fromMatches && !topConf && !botConf) return null;
+
         const topCenter = getMatchCenter(fromRoundIdx, 2 * i);
         const botCenter = getMatchCenter(fromRoundIdx, 2 * i + 1);
         const midY = (topCenter + botCenter) / 2;
 
+        // Vertical line only spans the confirmed portion
+        const vertStart = topConf ? topCenter : midY;
+        const vertEnd = botConf ? botCenter : midY;
+
         return (
           <div key={i}>
-            <div style={{ position: "absolute", left: CONN_W / 2, top: topCenter, width: 1, height: botCenter - topCenter, background: lineColor }} />
-            <div style={{ position: "absolute", left: 0, top: topCenter, width: CONN_W / 2, height: 1, background: lineColor }} />
-            <div style={{ position: "absolute", left: 0, top: botCenter, width: CONN_W / 2, height: 1, background: lineColor }} />
+            {vertEnd > vertStart && (
+              <div style={{ position: "absolute", left: CONN_W / 2, top: vertStart, width: 1, height: vertEnd - vertStart, background: lineColor }} />
+            )}
+            {topConf && (
+              <div style={{ position: "absolute", left: 0, top: topCenter, width: CONN_W / 2, height: 1, background: lineColor }} />
+            )}
+            {botConf && (
+              <div style={{ position: "absolute", left: 0, top: botCenter, width: CONN_W / 2, height: 1, background: lineColor }} />
+            )}
             <div style={{ position: "absolute", left: CONN_W / 2, top: midY, width: CONN_W / 2, height: 1, background: lineColor }} />
           </div>
         );
@@ -310,6 +330,7 @@ export function BracketPanel({
                     fromRoundIdx={globalIdx}
                     toMatchCount={nextRound.matches.length}
                     totalH={totalH}
+                    fromMatches={round.slug === "round-of-32" ? round.matches : undefined}
                   />
                 )}
               </div>
