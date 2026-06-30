@@ -35,9 +35,9 @@ function formatTime(ms: number): string {
 
 
 function MatchTimeBadge({ matchTime }: { matchTime?: string }) {
-  const label = matchTime?.toUpperCase() === "PENS" ? "PEN" : (matchTime ?? "FT");
-  // Amber if match went beyond 90 minutes (injury time or extra time)
-  const isOvertime = label !== "FT" && !label.startsWith("90'") && label !== "90:00";
+  const upper = matchTime?.toUpperCase() ?? "FT";
+  const label = upper === "FT-PENS" || upper === "PENS" ? "PEN" : (matchTime ?? "FT");
+  const isOvertime = label !== "FT" && label !== "PEN";
   return (
     <span
       className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest shrink-0"

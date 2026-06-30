@@ -59,16 +59,24 @@ async function fetchESPNEvents(dateStr: string): Promise<ESPNEvent[]> {
 }
 
 function isFinishedStatus(statusName: string): boolean {
-  return statusName === "STATUS_FULL_TIME" || statusName === "STATUS_FINAL";
+  return (
+    statusName === "STATUS_FULL_TIME" ||
+    statusName === "STATUS_FINAL" ||
+    statusName === "STATUS_FINAL_PEN" ||
+    statusName === "STATUS_FINAL_AET"
+  );
 }
 
-// Parse ESPN displayClock into total elapsed minutes. "90'+7'" → 97, "120'+5'" → 125, "90:00" → 90.
+// Parse ESPN displayClock into total elapsed minutes.
+// "90'+7'" → 97, "120'+5'" → 125, "90:00" → 90, "120'" → 120.
 function parseMatchMinutes(displayClock?: string): number {
   if (!displayClock) return 95;
-  const overtime = displayClock.match(/^(\d+)'\+(\d+)'/);
-  if (overtime) return parseInt(overtime[1]) + parseInt(overtime[2]);
+  const withInjury = displayClock.match(/^(\d+)'\+(\d+)'/);
+  if (withInjury) return parseInt(withInjury[1]) + parseInt(withInjury[2]);
   const colon = displayClock.match(/^(\d+):/);
   if (colon) return parseInt(colon[1]);
+  const bare = displayClock.match(/^(\d+)'$/);
+  if (bare) return parseInt(bare[1]);
   return 95;
 }
 
@@ -212,7 +220,7 @@ export async function getPastMatches(days = 1): Promise<PastMatch[]> {
         venue: venue?.fullName
           ? { stadium: venue.fullName, city: city ?? "", country: region ?? "" }
           : undefined,
-        matchTime: event.status?.displayClock,
+        matchTime: event.status?.type?.shortDetail,
       });
     }
   }

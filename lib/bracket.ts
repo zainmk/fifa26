@@ -119,7 +119,10 @@ export async function getBracketData(): Promise<BracketData> {
     const statusName = (statusType?.name as string) ?? "";
 
     const finished =
-      statusName === "STATUS_FULL_TIME" || statusName === "STATUS_FINAL";
+      statusName === "STATUS_FULL_TIME" ||
+      statusName === "STATUS_FINAL" ||
+      statusName === "STATUS_FINAL_PEN" ||
+      statusName === "STATUS_FINAL_AET";
     const live =
       !finished &&
       statusName !== "" &&
