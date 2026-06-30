@@ -90,9 +90,15 @@ export function MatchCard({
   function handleCardClick(e: React.MouseEvent) {
     if ((e.target as HTMLElement).closest("a")) return;
     const isMobile = window.innerWidth < 768;
-    const target = isMobile
-      ? (sources.find((s) => s.source === "echo") ?? sources[0])
-      : (bestSource ?? sources[0]);
+    let target: MatchSource | null | undefined;
+    if (isMobile) {
+      // Only admin and echo work on mobile; prefer whichever has the highest viewer count
+      const mobileOk = bestSource?.source === "admin" || bestSource?.source === "echo";
+      target = mobileOk ? bestSource
+        : sources.find((s) => s.source === "echo") ?? sources.find((s) => s.source === "admin");
+    } else {
+      target = bestSource ?? sources[0];
+    }
     if (!target) return;
     window.open(embedUrl(target.source, target.id), "_blank", "noopener,noreferrer");
   }
