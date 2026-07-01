@@ -168,11 +168,6 @@ export function MatchCard({
     >
       <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
       {s.source}
-      {s.source === "echo" && (
-        <svg className="w-3 h-3 ml-0.5 opacity-60" fill="currentColor" viewBox="0 0 24 24" aria-label="Works on mobile">
-          <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
-        </svg>
-      )}
     </a>
   ));
 
