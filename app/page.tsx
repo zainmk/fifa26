@@ -1,6 +1,7 @@
 import { getLiveMatches, getTodayMatches, filterFootball } from "@/lib/api";
 import { getESPNMatchRange, teamKey } from "@/lib/espn";
 import { getCustomStreams } from "@/lib/custom-streams";
+import { getSportekMatchUrls } from "@/lib/sportek";
 import { MatchCard } from "@/components/MatchCard";
 import { PastMatchCard } from "@/components/PastMatchCard";
 import { RefreshLive } from "@/components/RefreshLive";
@@ -12,11 +13,12 @@ import type { ESPNMatch, MatchSource } from "@/types";
 export const revalidate = 30;
 
 export default async function HomePage() {
-  const [espnMatches, liveAll, todayAll, bracketData] = await Promise.all([
+  const [espnMatches, liveAll, todayAll, bracketData, sportekUrls] = await Promise.all([
     getESPNMatchRange(3, 3),
     getLiveMatches(),
     getTodayMatches(),
     getBracketData(),
+    getSportekMatchUrls(),
   ]);
 
   const streamsDown = liveAll === null && todayAll === null;
@@ -39,9 +41,17 @@ export default async function HomePage() {
   // Attach streams and split into past vs active/upcoming/future
   const now = Date.now();
   const allMatches: ESPNMatch[] = espnMatches.map((m) => {
+    const key = teamKey(m.homeTeam.name, m.awayTeam.name);
     const custom = getCustomStreams(m.homeTeam.name, m.awayTeam.name);
-    const streamed = streamLookup.get(teamKey(m.homeTeam.name, m.awayTeam.name)) ?? [];
-    return { ...m, sources: [...custom, ...streamed] };
+    const streamed = streamLookup.get(key) ?? [];
+
+    // Add sportek source if found and not already covered by a custom entry with the same URL
+    const sportekUrl = sportekUrls.get(key);
+    const sportekSource = sportekUrl && !custom.some((c) => c.url === sportekUrl)
+      ? [{ source: "sportek", id: `sportek-${m.id}`, url: sportekUrl }]
+      : [];
+
+    return { ...m, sources: [...custom, ...sportekSource, ...streamed] };
   });
 
   const past = allMatches.filter(
