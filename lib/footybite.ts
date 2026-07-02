@@ -7,6 +7,8 @@ const SLUG_OVERRIDES: Record<string, string> = {
   "DR Congo": "congo-dr",
   "Congo DR": "congo-dr",
   "United States": "usa",
+  "Bosnia and Herzegovina": "bosnia-and-herzegovina",
+  "Bosnia-Herzegovina": "bosnia-and-herzegovina",
 };
 
 function teamToSlug(name: string): string {
@@ -29,7 +31,7 @@ export async function getFootybiteStreams(homeTeam: string, awayTeam: string): P
     const m = html.match(/const allStreams\s*=\s*(\[[\s\S]*?\]);/);
     if (!m) return [];
     const streams: FBStream[] = JSON.parse(m[1]);
-    const KEEP = new Set(["tsn", "fox", "itv1"]);
+    const KEEP = new Set(["tsn", "fox", "itv1", "bbc"]);
     return streams
       .filter((s) => s.type === "external" && s.value && KEEP.has(labelToSource(s.label)))
       .map((s, i) => ({
